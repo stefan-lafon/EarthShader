@@ -1,0 +1,14 @@
+# Ignore Data
+dataset/
+*.jpg
+*.png
+*.glsl
+
+# Ignore Weights
+adapters/
+*.safetensors
+*.pt
+
+# Ignore Notebook junk
+.ipynb_checkpoints/
+__pycache__/
