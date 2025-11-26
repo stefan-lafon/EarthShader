@@ -12,3 +12,7 @@ adapters/
 # Ignore Notebook junk
 .ipynb_checkpoints/
 __pycache__/
+
+# Phase 2/3 Artifacts
+checkpoints*/
+*.jsonl
