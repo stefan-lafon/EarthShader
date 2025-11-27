@@ -11,14 +11,16 @@ The system is designed as a modular pipeline decoupling data acquisition, synthe
 ### Phase 1: Data Mining & Filtration (Current)
 To build a legally compliant "Ground Truth" dataset, we moved away from scraping to selective filtering of open repositories.
 * **Source:** `bigcode/the-stack` (GLSL subset).
-* **Strategy:** Streaming terabytes of code to identify the <1% of files that match Shadertoy syntax (`void mainImage`) while enforcing a strict **Permissive License Allowlist** (MIT, Apache 2.0, CC0).
-* **Outcome:** A clean, attribution-ready baseline of human-authored procedural logic.
+* **Metrics:** Scanned **317,741** GLSL files to identify **1,162** (0.36%) valid samples.
+* **Filtering:** Enforces a strict **Permissive License Allowlist** (MIT, Apache 2.0, CC0) and validates Shadertoy syntax (`void mainImage`).
+* **Sanitization:** Implements regex-based cleaning to strip desktop wrappers, remove comments (token optimization), and normalize legacy variable names.
+* **Procedural Constraint:** Enforces a **"Pure Procedural"** rule by rejecting shaders with external dependencies (textures, channels) to ensure 100% renderability in a headless environment.
 
 ### Phase 2: Synthetic Data Factory (In Progress)
-To solve the data scarcity problem (only ~2.6k high-quality open shaders exist), we utilize Large Language Models for semantic augmentation.
+To solve the data scarcity problem (scaling from ~1.1k samples), we utilize Large Language Models for semantic augmentation.
 * **Generator Model:** **Qwen2.5-Coder-7B**.
 * **Strategy:** **Semantic Fuzzing.** The model acts as a multiplier, rewriting existing valid shaders with specific mutation strategies (e.g., "Change the color palette," "Invert the geometry," "Alter the speed") while preserving the compilation structure.
-* **Objective:** Scaling the dataset from ~2.6k to ~15k+ samples to force the downstream model to learn continuous parameter control rather than memorization.
+* **Objective:** Scaling the dataset from 1,162 to **~10,000+** samples to force the downstream model to learn continuous parameter control rather than memorization.
 
 ### Phase 3: Headless Rendering & Grounding (Planned)
 * **Engine:** Custom `ModernGL` + `EGL` pipeline running in a headless cloud environment.
@@ -34,7 +36,7 @@ To solve the data scarcity problem (only ~2.6k high-quality open shaders exist),
 
 The workflow is divided into modular notebooks to manage cloud resource constraints:
 
-* `01_Data_Download.ipynb`: **The Miner.** Streams and filters raw GLSL from The Stack. (CPU/Network bound).
+* `01_Data_Download.ipynb`: **The Miner.** Streams, filters, and sanitizes raw GLSL from The Stack. (CPU/Network bound).
 * `02_Data_Generator.ipynb`: **The Multiplier.** Uses LLMs to synthesize variations of valid shaders. (GPU/Compute bound).
 * `03_Data_Renderer.ipynb`: **The Renderer.** Validates code by executing it and saving the output frames. (GPU/OpenGL bound).
 * `04_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
