@@ -6,48 +6,55 @@ The goal is to reverse-engineer natural images into executable, procedural fragm
 
 ## Architecture & Roadmap
 
-The system is designed as a multi-stage pipeline designed to decouple syntax acquisition, infrastructure scaling, and visual generalization.
+The system is designed as a modular pipeline decoupling data acquisition, synthetic expansion, and visual grounding.
 
-### Phase 1: Synthetic Ground Truth Factory (Completed)
-To generate high-signal training data without human labeling, we built a headless rendering engine.
-* **Headless EGL Pipeline:** Leverages `ModernGL` and `EGL` to perform headless GPU rendering of GLSL code in a cloud environment (Colab), converting text (code) into vision (pixels) without a display manager.
-* **Heuristic Text Sanitization:** Implements a parsing layer to strip headers, comments, and non-functional boilerplate. This solves the "Context Starvation" issue where legal text consumes the majority of the token window, preventing syntax convergence.
-* **Entropy Filtering:** Implements automated **Visual Entropy Filtering** to reject execution failures (black screens) or empty shaders, ensuring 100% of the training data is functional.
+### Phase 1: Data Mining & Filtration (Current)
+To build a legally compliant "Ground Truth" dataset, we moved away from scraping to selective filtering of open repositories.
+* **Source:** `bigcode/the-stack` (GLSL subset).
+* **Strategy:** Streaming terabytes of code to identify the <1% of files that match Shadertoy syntax (`void mainImage`) while enforcing a strict **Permissive License Allowlist** (MIT, Apache 2.0, CC0).
+* **Outcome:** A clean, attribution-ready baseline of human-authored procedural logic.
 
-### Phase 2: Neuro-Symbolic Translation Validation (Completed)
-* **Model:** **Qwen2-VL-2B-Instruct**.
-* **Strategy:** **"Steel Thread" Validation.** Used a lightweight 2B variant and a small benchmark dataset (`Shadereval`) to validate the end-to-end learning loop.
-* **Outcome:** Successfully validated the tokenizer's ability to map visual geometric features to strict GLSL syntax. Achieved training stability (Loss < 1.0) and reduced base-model hallucinations (e.g., C++/HLSL artifacts) via prompt engineering and clean data injection. The model demonstrates the capacity to produce self-contained, compilable ShaderToy code, validating the architecture for data scaling.
+### Phase 2: Synthetic Data Factory (In Progress)
+To solve the data scarcity problem (only ~2.6k high-quality open shaders exist), we utilize Large Language Models for semantic augmentation.
+* **Generator Model:** **Qwen2.5-Coder-7B**.
+* **Strategy:** **Semantic Fuzzing.** The model acts as a multiplier, rewriting existing valid shaders with specific mutation strategies (e.g., "Change the color palette," "Invert the geometry," "Alter the speed") while preserving the compilation structure.
+* **Objective:** Scaling the dataset from ~2.6k to ~15k+ samples to force the downstream model to learn continuous parameter control rather than memorization.
 
-### Phase 3: Texture Synthesis at Scale (Planned)
-* **Data Scaling:** Integrating the larger `shaders21k` dataset to move from memorization to generalization.
-* **Pipeline Upgrade:** Migrating from file-based I/O to compressed archive streaming to bypass cloud storage latency bottlenecks.
-* **Objective:** Training the model to hallucinate novel 2D procedural textures (noise patterns, materials) from unseen input images.
+### Phase 3: Headless Rendering & Grounding (Planned)
+* **Engine:** Custom `ModernGL` + `EGL` pipeline running in a headless cloud environment.
+* **Validation:** The renderer acts as the "Ground Truth Oracle." Synthetic shaders that fail to compile or render black frames are automatically rejected, ensuring 100% of the training data is functional.
+* **Outcome:** Conversion of text (code) into vision (pixels) to create the final `(Image, Code)` training pairs.
 
-### Phase 4: Infrastructure Scaling (Planned)
-* **Model Upgrade:** Upgrading to **Qwen2-VL-7B** to increase reasoning capacity once data scaling is confirmed.
-* **Optimization:** Implementing **4-bit QLoRA** quantization, **Gradient Checkpointing**, and **Flash Attention 2** to fit the larger model context within consumer hardware constraints (T4/L4 GPUs).
+### Phase 4: Neuro-Symbolic Translation (Planned)
+* **Training Model:** **Qwen2-VL-2B-Instruct** (scaling to **7B**).
+* **Strategy:** Fine-tuning a Vision-Language Model to map visual features (texture, shape) to the discrete logic required to generate them.
+* **Optimization:** Implementing 4-bit QLoRA and gradient checkpointing to fit training within consumer/colab hardware constraints (T4 GPU).
 
-### Phase 5: Volumetric Transfer (Planned)
-* **Domain Transfer:** Transfer learning from 2D texture logic to 3D Volumetric Geometry.
-* **Objective:** Generating Signed Distance Functions (SDFs) and raymarching loops to represent 3D terrains and objects.
+## Project Structure
+
+The workflow is divided into modular notebooks to manage cloud resource constraints:
+
+* `01_Data_Download.ipynb`: **The Miner.** Streams and filters raw GLSL from The Stack. (CPU/Network bound).
+* `02_Data_Generator.ipynb`: **The Multiplier.** Uses LLMs to synthesize variations of valid shaders. (GPU/Compute bound).
+* `03_Data_Renderer.ipynb`: **The Renderer.** Validates code by executing it and saving the output frames. (GPU/OpenGL bound).
+* `04_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
 
 ## Dataset & Attribution
 
-This project utilizes data derived from the **Shadertoy** ecosystem.
+This project prioritizes data hygiene and open-source compliance.
 
-* **Primary Source:** [Vipitis/Shadereval-inputs](https://huggingface.co/datasets/Vipitis/Shadereval-inputs).
-    * *Note:* This dataset contains canonical GLSL functions (primitives, noise) originally used for code-completion benchmarks. We repurpose it here as "Ground Truth" for inverse rendering validation.
-* **License:** The training data is largely licensed under **CC BY-NC-SA 3.0** (Creative Commons Attribution-NonCommercial-ShareAlike).
-* **Usage:** This project is strictly for **Educational and Non-Commercial Research**. It is not intended for commercial deployment. We gratefully acknowledge the contributions of the Shadertoy community.
+* **Primary Source:** [BigCode/The Stack](https://huggingface.co/datasets/bigcode/the-stack).
+* **License Strategy:** We strictly filter for **Permissive Licenses** (MIT, Apache 2.0, BSD, CC0). Unlike standard scrapes which often rely on Non-Commercial (CC-BY-NC-SA) data, this pipeline is designed to be compatible with Open Weights release standards.
+* **Usage:** This project is for **Educational and Research Purposes**.
 
 ## Tech Stack
 
-* **Core Model:** Qwen2-VL (2B / 7B), PyTorch
-* **Training Engine:** Native PyTorch (Custom Loop), PEFT (LoRA)
-* **Data Pipeline:** ModernGL (Headless OpenGL), Hugging Face Datasets
+* **Core Model:** Qwen2-VL (2B / 7B)
+* **Synthetic Generator:** Qwen2.5-Coder
+* **Training Engine:** PyTorch, PEFT (LoRA), BitsAndBytes
+* **Data Pipeline:** Hugging Face Datasets, ModernGL (Headless)
 * **Infrastructure:** Google Colab (T4 GPU), Google Drive (Persistence)
 
 ## License
 
-The source code for the EarthShader training pipeline is released under the MIT License. The model weights (adapters) are subject to the license terms of the training data (CC BY-NC-SA 3.0).
+The source code for the EarthShader pipeline is released under the MIT License.
