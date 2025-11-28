@@ -8,38 +8,50 @@ The goal is to reverse-engineer natural images into executable, procedural fragm
 
 The system is designed as a modular pipeline decoupling data acquisition, synthetic expansion, and visual grounding.
 
-### Phase 1: Data Mining & Filtration (Current)
-To build a legally compliant "Ground Truth" dataset, we moved away from scraping to selective filtering of open repositories.
+### Phase 1: Data Mining (The Miner)
+Acquires raw potential seeds from open repositories.
 * **Source:** `bigcode/the-stack` (GLSL subset).
-* **Metrics:** Scanned **317,741** GLSL files to identify **1,162** (0.36%) valid samples.
+* **Metrics:** Scanned **317,741** GLSL files to identify **1,162** (0.36%) potentially valid samples.
 * **Filtering:** Enforces a strict **Permissive License Allowlist** (MIT, Apache 2.0, CC0) and validates Shadertoy syntax (`void mainImage`).
-* **Sanitization:** Implements regex-based cleaning to strip desktop wrappers, remove comments (token optimization), and normalize legacy variable names.
-* **Procedural Constraint:** Enforces a **"Pure Procedural"** rule by rejecting shaders with external dependencies (textures, channels) to ensure 100% renderability in a headless environment.
+* **Sanitization:** Implements regex-based cleaning to strip desktop wrappers, remove comments, and normalize legacy variable names.
+* **Output:** A raw archive of potentially usable code (`raw_stack_shaders.jsonl`).
 
-### Phase 2: Synthetic Data Factory (In Progress)
-To solve the data scarcity problem (scaling from ~1.1k samples), we utilize Large Language Models for semantic augmentation.
-* **Generator Model:** **Qwen2.5-Coder-7B**.
-* **Strategy:** **Semantic Fuzzing.** The model acts as a multiplier, rewriting existing valid shaders with specific mutation strategies (e.g., "Change the color palette," "Invert the geometry," "Alter the speed") while preserving the compilation structure.
-* **Objective:** Scaling the dataset from 1,162 to **~10,000+** samples to force the downstream model to learn continuous parameter control rather than memorization.
+### Phase 2: Validation & Aggregation (The Gatekeeper)
+A new intermediate stage acting as the "Firewall" for the dataset. It aggregates data from automated mining and manual injections, validating every shader before it enters the synthetic pipeline.
+* **Inputs:** Raw data from The Stack + Manual Injection folder (`*.glsl`).
+* **Function:** Compiles and renders every seed candidate in a headless EGL environment.
+* **Triage:**
+    * **Verified:** Shaders that compile and produce valid images (passed to Phase 3).
+    * **Quarantine:** Broken shaders saved with error logs for manual repair.
+    * **Blocklist:** Permanently banned code hashes (e.g., empty screens, crashes).
 
-### Phase 3: Headless Rendering & Grounding (Planned)
-* **Engine:** Custom `ModernGL` + `EGL` pipeline running in a headless cloud environment.
-* **Validation:** The renderer acts as the "Ground Truth Oracle." Synthetic shaders that fail to compile or render black frames are automatically rejected, ensuring 100% of the training data is functional.
+### Phase 3: Synthetic Data Factory (The Multiplier)
+Scales the verified dataset using Large Language Models.
+* **Model:** **Qwen2.5-Coder-7B**.
+* **Input:** Strictly `verified_seeds.jsonl` (Zero waste on broken code).
+* **Strategy:** **Semantic Fuzzing.** The model rewrites valid shaders with specific mutations (e.g., "Change color palette," "Invert geometry," "Alter speed") while preserving structure.
+* **Objective:** Scaling the dataset from ~1k to ~10k+ samples to force the downstream model to learn continuous parameter control.
+
+### Phase 4: Headless Rendering (The Factory)
+Mass-produces the final training dataset.
+* **Engine:** `ModernGL` + `EGL` headless rendering.
+* **Input:** Merged stream of `verified_seeds.jsonl` and `synthetic_variations.jsonl`.
 * **Outcome:** Conversion of text (code) into vision (pixels) to create the final `(Image, Code)` training pairs.
 
-### Phase 4: Neuro-Symbolic Translation (Planned)
+### Phase 5: Neuro-Symbolic Translation (The Brain)
 * **Training Model:** **Qwen2-VL-2B-Instruct** (scaling to **7B**).
 * **Strategy:** Fine-tuning a Vision-Language Model to map visual features (texture, shape) to the discrete logic required to generate them.
 * **Optimization:** Implementing 4-bit QLoRA and gradient checkpointing to fit training within consumer/colab hardware constraints (T4 GPU).
 
 ## Project Structure
 
-The workflow is divided into modular notebooks to manage cloud resource constraints:
+The workflow is divided into modular notebooks to manage the data lifecycle:
 
-* `01_Data_Download.ipynb`: **The Miner.** Streams, filters, and sanitizes raw GLSL from The Stack. (CPU/Network bound).
-* `02_Data_Generator.ipynb`: **The Multiplier.** Uses LLMs to synthesize variations of valid shaders. (GPU/Compute bound).
-* `03_Data_Renderer.ipynb`: **The Renderer.** Validates code by executing it and saving the output frames. (GPU/OpenGL bound).
-* `04_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
+* `01_Data_Download.ipynb`: **The Miner.** Streams and filters raw GLSL from The Stack. (CPU/Network bound).
+* `02_Seed_Gatekeeper.ipynb`: **The Gatekeeper.** Aggregates sources, validates rendering, and sorts into Verified/Quarantine/Blocklist. (GPU/OpenGL bound).
+* `03_Data_Generator.ipynb`: **The Multiplier.** Uses LLMs to synthesize variations of verified seeds. (GPU/Compute bound).
+* `04_Data_Renderer.ipynb`: **The Factory.** Renders the final training set from valid code. Input: Verified + Synthetic. (GPU/OpenGL bound).
+* `05_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
 
 ## Dataset & Attribution
 
