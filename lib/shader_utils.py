@@ -17,6 +17,7 @@ import json
 import hashlib
 import numpy as np
 import moderngl
+import signal
 from PIL import Image
 
 # --- CONFIGURATION & CONSTANTS ---
@@ -26,8 +27,6 @@ SAFE_LICENSES = [
     "CC0-1.0", "Unlicense", "ISC", "BlueOak-1.0.0"
 ]
 
-# The Standard Header injected into every shader during training/validation
-# This is the "Source of Truth" for uniforms.
 SHADER_HEADER = """
 #version 330
 uniform vec3      iResolution;
@@ -39,14 +38,12 @@ uniform vec4      iDate;
 out vec4 fragColor;
 """
 
-# The Wrapper to call the Shadertoy entry point
 SHADER_FOOTER = """
 void main() {
     mainImage(fragColor, gl_FragCoord.xy);
 }
 """
 
-# Simple Pass-Through Vertex Shader
 VERTEX_SHADER = """
 #version 330
 in vec2 in_vert;
@@ -186,6 +183,10 @@ def is_safe_license(license_list):
 
 # --- RENDERING ENGINE ---
 
+# Helper for signal timeout
+def _timeout_handler(signum, frame):
+    raise TimeoutError("Shader rendering timed out.")
+
 def create_headless_context():
     """Creates a ModernGL context for headless rendering."""
     try:
@@ -193,11 +194,14 @@ def create_headless_context():
     except:
         return moderngl.create_context(standalone=True)
 
-def render_shader(ctx, user_code, width=512, height=512, time_val=1.0):
+def render_shader(ctx, user_code, width=512, height=512, time_val=1.0, timeout=8):
     """
     Fast validation render. Returns statistics (Success, Msg, Entropy).
-    Used by the Gatekeeper for rapid filtering.
+    Includes a Watchdog Timeout (default 8s) to prevent hangs.
     """
+    # Register timeout handler
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    
     try:
         full_source = f"{SHADER_HEADER}\n{user_code}\n{SHADER_FOOTER}"
 
@@ -222,11 +226,15 @@ def render_shader(ctx, user_code, width=512, height=512, time_val=1.0):
         vbo = ctx.buffer(vertices)
         vao = ctx.simple_vertex_array(prog, vbo, 'in_vert')
         
-        # Render
-        vao.render(moderngl.TRIANGLE_STRIP)
+        # --- RENDER WITH TIMEOUT ---
+        signal.alarm(timeout) # Start timer
+        try:
+            vao.render(moderngl.TRIANGLE_STRIP)
+            raw = fbo.read(components=3) # Force GPU sync
+        finally:
+            signal.alarm(0) # Disable timer
+        # ---------------------------
 
-        # Read Pixels
-        raw = fbo.read(components=3)
         img = np.frombuffer(raw, dtype=np.uint8)
 
         # Basic Validation (Check for pure black/flat images)
@@ -243,16 +251,20 @@ def render_shader(ctx, user_code, width=512, height=512, time_val=1.0):
 
         return True, "Success", float(entropy)
 
+    except TimeoutError:
+        return False, "Timeout (GPU Hang)", 0.0
     except Exception as e:
         return False, str(e), 0.0
 
-def render_image(code, width=512, height=288, time_val=1.0):
+def render_image(code, width=512, height=288, time_val=1.0, timeout=8):
     """
     Production render. Returns a PIL Image object.
-    Creates its own context to ensure thread safety and isolation.
-    Returns None if rendering fails.
+    Includes a Watchdog Timeout (default 8s) to prevent hangs.
     """
     ctx = None
+    # Register timeout handler
+    signal.signal(signal.SIGALRM, _timeout_handler)
+
     try:
         ctx = create_headless_context()
         full_source = f"{SHADER_HEADER}\n{code}\n{SHADER_FOOTER}"
@@ -274,11 +286,16 @@ def render_image(code, width=512, height=288, time_val=1.0):
         vbo = ctx.buffer(vertices)
         vao = ctx.simple_vertex_array(prog, vbo, 'in_vert')
         
-        vao.render(moderngl.TRIANGLE_STRIP)
+        # --- RENDER WITH TIMEOUT ---
+        signal.alarm(timeout)
+        try:
+            vao.render(moderngl.TRIANGLE_STRIP)
+            raw = fbo.read(components=3)
+        finally:
+            signal.alarm(0)
+        # ---------------------------
         
-        raw = fbo.read(components=3)
-        
-        # Convert to PIL Image (Flip because OpenGL is bottom-left origin)
+        # Convert to PIL Image
         img = Image.frombytes('RGB', (width, height), raw).transpose(Image.FLIP_TOP_BOTTOM)
         
         # Cleanup
