@@ -25,14 +25,15 @@ A new intermediate stage acting as the "Firewall" for the dataset. It aggregates
     * **Quarantine:** Broken shaders saved with error logs for manual repair.
     * **Blocklist:** Permanently banned code hashes (e.g., empty screens, crashes).
 
-### Phase 3: Synthetic Data Factory (The Multiplier)
-Scales the verified dataset using a hybrid fuzzing architecture.
-* **Model:** **Qwen2.5-Coder-7B** (for semantic) + **Regex Engine** (for deterministic).
+### Phase 3: Synthetic Data Factory (The Fuzzer)
+Scales the verified dataset using high-throughput deterministic mutation.
+* **Tool:** `03_Data_Fuzzer.ipynb` (CPU-based).
 * **Input:** Strictly `verified_seeds.jsonl` (Zero waste on broken code).
-* **Strategy:** Implements two distinct approaches to maximize coverage and robustness:
-    1. **LLM-Based Mutation (Fragile):** Uses Qwen2.5 to semantically rewrite logic (e.g., "Invert lighting," "Rewrite color palette"). High creativity but prone to syntax errors and hallucinations.
-    2. **Deterministic Parameter Variation (Robust):** A CPU-based fuzzer that identifies floating-point literals and applies multiplicative noise, while also injecting static time snapshots. High throughput and structural safety.
+* **Strategy:** **Deterministic Parameter Variation.**
+    * **Float Fuzzing:** Identifies floating-point literals via Regex and applies multiplicative noise (e.g., ±10%) to distort geometry and colors while preserving logic.
+    * **Time Snapshots:** Injects static time definitions to capture shaders at specific animation states.
 * **Objective:** Scaling the dataset from ~1k to ~10k+ samples to force the downstream model to learn continuous parameter control.
+* **Note:** An experimental LLM-based generator (`Qwen2.5-Coder`) is available in `experimental/` but is currently secondary due to lower robustness.
 
 ### Phase 4: Headless Rendering (The Factory)
 Mass-produces the final training dataset.
@@ -51,10 +52,10 @@ The workflow is divided into modular notebooks to manage the data lifecycle:
 
 * `01_Data_Download.ipynb`: **The Miner.** Streams and filters raw GLSL from The Stack. (CPU/Network bound).
 * `02_Seed_Gatekeeper.ipynb`: **The Gatekeeper.** Aggregates sources, validates rendering, and sorts into Verified/Quarantine/Blocklist. (GPU/OpenGL bound).
-* `03_Data_Generator.ipynb`: **The Semantic Multiplier.** Uses LLMs to synthesize complex variations of verified seeds. (GPU/Compute bound).
-* `03_Data_Fuzzer.ipynb`: **The Deterministic Multiplier.** Uses Regex to fuzz parameters and time variables. (CPU bound).
+* `03_Data_Fuzzer.ipynb`: **The Multiplier (Phase 3).** Deterministic Regex-based fuzzer for fast dataset expansion. (CPU bound).
 * `04_Data_Renderer.ipynb`: **The Factory.** Renders the final training set from valid code. Input: Verified + Synthetic. (GPU/OpenGL bound).
 * `05_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
+* `experimental/`: Contains experimental notebooks (e.g., LLM-based Generator).
 
 ## Dataset & Attribution
 
@@ -67,7 +68,6 @@ This project prioritizes data hygiene and open-source compliance.
 ## Tech Stack
 
 * **Core Model:** Qwen2-VL (2B / 7B)
-* **Synthetic Generator:** Qwen2.5-Coder
 * **Training Engine:** PyTorch, PEFT (LoRA), BitsAndBytes
 * **Data Pipeline:** Hugging Face Datasets, ModernGL (Headless)
 * **Infrastructure:** Google Colab (T4 GPU), Google Drive (Persistence)
