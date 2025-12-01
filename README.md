@@ -16,14 +16,16 @@ Acquires raw potential seeds from open repositories.
 * **Sanitization:** Implements regex-based cleaning to strip desktop wrappers, remove comments, and normalize legacy variable names.
 * **Output:** A raw archive of potentially usable code (`raw_stack_shaders.jsonl`).
 
-### Phase 2: Validation & Aggregation (The Gatekeeper)
-A new intermediate stage acting as the "Firewall" for the dataset. It aggregates data from automated mining and manual injections, validating every shader before it enters the synthetic pipeline.
-* **Inputs:** Raw data from The Stack + Manual Injection folder (`*.glsl`).
-* **Function:** Compiles and renders every seed candidate in a headless EGL environment.
+### Phase 2: Validation & Aggregation (The Universal Gatekeeper)
+A unified validation engine acting as the "Firewall" for the dataset. It now operates in two distinct modes to validate data from different stages of the pipeline.
+* **Modes:**
+    * **HUMAN (Gold Standard):** Validates raw seeds from Phase 1. Outputs to `verified_seeds.jsonl`.
+    * **SYNTHETIC (Silver Standard):** Validates generated variations from Phase 3. Outputs to `verified_synthetic.jsonl`.
+* **Function:** Compiles and renders every candidate in a headless EGL environment to ensure 100% reproducibility.
 * **Triage:**
-    * **Verified:** Shaders that compile and produce valid images (passed to Phase 3).
-    * **Quarantine:** Broken shaders saved with error logs for manual repair.
-    * **Blocklist:** Permanently banned code hashes (e.g., empty screens, crashes).
+    * **Verified:** Shaders that compile and produce valid (non-empty) images.
+    * **Quarantine:** Broken shaders saved with error logs.
+    * **Blocklist:** Permanently banned code hashes (e.g., GPU hangs, black screens).
 
 ### Phase 3: Synthetic Data Factory (The Fuzzer)
 Scales the verified dataset using high-throughput deterministic mutation.
@@ -51,9 +53,9 @@ Mass-produces the final training dataset.
 The workflow is divided into modular notebooks to manage the data lifecycle:
 
 * `01_Data_Download.ipynb`: **The Miner.** Streams and filters raw GLSL from The Stack. (CPU/Network bound).
-* `02_Seed_Gatekeeper.ipynb`: **The Gatekeeper.** Aggregates sources, validates rendering, and sorts into Verified/Quarantine/Blocklist. (GPU/OpenGL bound).
+* `02_Seed_Gatekeeper.ipynb`: **The Gatekeeper.** Validates both Human and Synthetic data. Select mode via dropdown. (GPU/OpenGL bound).
 * `03_Data_Fuzzer.ipynb`: **The Multiplier (Phase 3).** Deterministic Regex-based fuzzer for fast dataset expansion. (CPU bound).
-* `04_Data_Renderer.ipynb`: **The Factory.** Renders the final training set from valid code. Input: Verified + Synthetic. (GPU/OpenGL bound).
+* `04_Data_Renderer.ipynb`: **The Factory.** Renders the final training set from valid code. (GPU/OpenGL bound).
 * `05_Training_Pipeline.ipynb`: **The Brain.** Fine-tunes Qwen2-VL on the generated pairs. (GPU/Memory bound).
 * `experimental/`: Contains experimental notebooks (e.g., LLM-based Generator).
 
