@@ -4,10 +4,8 @@ dataset/
 *.png
 *.glsl
 
-# Ignore Weights
-adapters/
-*.safetensors
-*.pt
+# Allowlist the standard library (Exception to *.glsl)
+!common.glsl
 
 # Ignore Notebook junk
 .ipynb_checkpoints/
