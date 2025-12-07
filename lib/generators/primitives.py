@@ -1,5 +1,5 @@
 import random
-from .base import random_vec3, construct_shader
+from .base import random_vec3_values, construct_shader
 
 def generate_primitive(index=0):
     """
@@ -8,21 +8,30 @@ def generate_primitive(index=0):
     """
     shape_type = random.choice(['circle', 'square', 'ring'])
     
-    # 1. Randomize Parameters
-    pos_x = round(random.uniform(-0.3, 0.3), 2)
-    pos_y = round(random.uniform(-0.3, 0.3), 2)
-    size = round(random.uniform(0.1, 0.4), 2)
+    # 1. Randomize Parameters (CLIPPING FIX APPLIED)
+    # Reduced range to prevent shapes from touching the edge
+    # Max Extent = 0.2 (pos) + 0.25 (size) = 0.45 < 0.5 (Screen Boundary)
+    pos_x = round(random.uniform(-0.2, 0.2), 2)
+    pos_y = round(random.uniform(-0.2, 0.2), 2)
+    size = round(random.uniform(0.1, 0.25), 2)
+    
     blur = round(random.uniform(0.001, 0.05), 3)
-    color_vec = random_vec3()
+    
+    # DATA LEAKAGE FIX: Separate raw values from syntax
+    r, g, b = random_vec3_values()
     
     analysis_lines = [
         f"// Shape: {shape_type.capitalize()}",
         f"// Position: Offset by ({pos_x}, {pos_y})",
-        f"// Size: {size}",                               # <--- NEW: Explicit Size
-        f"// Color: Custom RGB {color_vec}"
+        f"// Size: {size}",
+        f"// Color: RGB ({r}, {g}, {b})", # Human readable (No 'vec3')
+        f"// Blur: {blur}"
     ]
     
     code_lines = []
+    
+    # Pre-format the GLSL vector for use in the code block only
+    glsl_color = f"vec3({r}, {g}, {b})"
     
     # 2. Build Code Block
     if shape_type == 'circle':
@@ -40,13 +49,15 @@ def generate_primitive(index=0):
         
     elif shape_type == 'ring':
         thickness = round(random.uniform(0.02, 0.1), 2)
+        analysis_lines.append(f"// Thickness: {thickness}") 
         analysis_lines.append("// Edge: Annular distance")
+        
         code_lines.append(f"    // Distance Field for Ring")
         code_lines.append(f"    float d = abs(length(uv - vec2({pos_x}, {pos_y})) - {size});")
         code_lines.append(f"    float mask = smoothstep({thickness}, {thickness} - {blur}, d);")
 
     # 3. Composition
     code_lines.append(f"    // Composite")
-    code_lines.append(f"    col = mix(col, {color_vec}, mask);")
+    code_lines.append(f"    col = mix(col, {glsl_color}, mask);")
     
     return construct_shader(analysis_lines, code_lines)

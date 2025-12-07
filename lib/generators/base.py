@@ -8,6 +8,9 @@ TEMPLATE_HEADER = """/* ANALYSIS
 void mainImage( out vec4 fragColor, in vec2 fragCoord ) {{
     // 1. Setup normalized UV (0,0 is center)
     vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+    // NOTE: Standard Cartesian Coordinates.
+    // X: Negative = Left, Positive = Right
+    // Y: Negative = Bottom, Positive = Top
     
     // 2. Define Base Color
     vec3 col = vec3(0.0); // Black background
@@ -20,12 +23,12 @@ TEMPLATE_FOOTER = """
     fragColor = vec4(col, 1.0);
 }"""
 
-def random_vec3():
-    """Generates a random GLSL vec3 color string."""
+def random_vec3_values():
+    """Generates random RGB float values."""
     r = round(random.random(), 2)
     g = round(random.random(), 2)
     b = round(random.random(), 2)
-    return f"vec3({r}, {g}, {b})"
+    return r, g, b
 
 def construct_shader(analysis_lines, code_lines):
     """Assembles the full shader string."""
