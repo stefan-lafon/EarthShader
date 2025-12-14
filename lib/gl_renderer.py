@@ -8,21 +8,31 @@ class ShaderRenderer:
     def __init__(self, width=512, height=512):
         self.width = width
         self.height = height
+        self.ctx = None
         
-        # Force EGL backend for Colab (Headless)
-        # This prevents the "cannot open display" error
-        self.ctx = moderngl.create_context(standalone=True, backend='egl')
+        # --- FIX: ROBUST CONTEXT CREATION ---
+        # 1. Try EGL first (Essential for Colab/Headless)
+        try:
+            self.ctx = moderngl.create_context(standalone=True, backend='egl')
+            # print("[ShaderRenderer] Using EGL backend.") # Optional logging
+        except Exception as e:
+            # 2. Fallback to standard (sometimes required on local machines)
+            # print(f"[ShaderRenderer] EGL failed ({e}), using default...")
+            try:
+                self.ctx = moderngl.create_context(standalone=True)
+            except Exception as e2:
+                raise Exception(f"Failed to create ModernGL Context: {e} | {e2}")
         
-        # OPTIMIZATION 1: Create the geometry (VBO) ONCE.
-        # It's just a screen quad, it never changes.
+        # OPTIMIZATION 1: Static Geometry (Screen Quad)
+        # We create this once and reuse it for every render.
         vertices = np.array([-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0], dtype='f4')
-        self.vbo = self.ctx.buffer(vertices)
+        self.vbo = self.ctx.buffer(vertices.tobytes())
         
-        # OPTIMIZATION 2: Create the Framebuffer (FBO) ONCE.
-        # We can just clear it and reuse it for every image.
-        self.fbo = self.ctx.simple_framebuffer((self.width, self.height))
+        # OPTIMIZATION 2: Static Framebuffer
+        # Created once, cleared and reused.
+        self.fbo = self.ctx.simple_framebuffer((self.width, self.height), components=3)
         
-        # Standard vertex shader
+        # Standard Vertex Shader (Pass-through)
         self.vert_shader = '''
         #version 330
         in vec2 in_vert;
@@ -33,14 +43,31 @@ class ShaderRenderer:
         }
         '''
         
+        # Load Common GLSL Library
         self.common_lib = ""
-        # Locate common.glsl relative to this lib file
-        common_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'common.glsl')
-        if os.path.exists(common_path):
-            with open(common_path, 'r') as f:
-                self.common_lib = f.read()
+        try:
+            # Handle both script file execution and Jupyter notebook cases
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Assuming lib/gl_renderer.py structure, common.glsl is in lib/
+            # If your common.glsl is in the root, use os.path.dirname(current_dir)
+            common_path = os.path.join(current_dir, 'common.glsl') 
+            
+            # Fallback for Colab specific path if not found relative
+            if not os.path.exists(common_path):
+                 common_path = '/content/drive/MyDrive/projects/EarthShader/lib/common.glsl'
+
+            if os.path.exists(common_path):
+                with open(common_path, 'r') as f:
+                    self.common_lib = f.read()
+            else:
+                print(f"Warning: common.glsl not found at {common_path}")
+                
+        except NameError:
+            # __file__ is not defined in Jupyter, assume absolute path or local dir
+            pass
 
     def render(self, fragment_code, output_path):
+        # Inject common lib and code into the template
         full_frag_shader = f'''
         #version 330
         uniform vec2 iResolution;
@@ -61,24 +88,25 @@ class ShaderRenderer:
         vao = None
 
         try:
-            # 1. Create Program (Must be new every time as code changes)
+            # 1. Create Program (Dynamic per sample)
             prog = self.ctx.program(
                 vertex_shader=self.vert_shader,
                 fragment_shader=full_frag_shader,
             )
             
+            # Set Uniforms
             if 'iResolution' in prog:
                 prog['iResolution'].value = (self.width, self.height)
 
-            # 2. Create VAO (Links static VBO to dynamic Program)
+            # 2. Create VAO (Link static VBO to dynamic Program)
             vao = self.ctx.simple_vertex_array(prog, self.vbo, 'in_vert')
             
-            # 3. Render to the static FBO
+            # 3. Render
             self.fbo.use()
-            self.fbo.clear(0.0, 0.0, 0.0, 1.0)
+            self.fbo.clear(0.0, 0.0, 0.0, 1.0) # Clear to black
             vao.render(moderngl.TRIANGLE_STRIP)
             
-            # 4. Read pixels
+            # 4. Read & Save
             data = self.fbo.read(components=3)
             image = Image.frombytes('RGB', self.fbo.size, data)
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
@@ -87,19 +115,20 @@ class ShaderRenderer:
             return True
 
         except Exception as e:
-            print(f"Shader Error: {e}")
+            # Use this print to debug broken shader syntax generated by the model
+            # print(f"Shader Error: {e}") 
             return False
             
         finally:
-            # OPTIMIZATION 3: Explicit cleanup of dynamic objects only
+            # OPTIMIZATION 3: Cleanup only the dynamic resources
             if vao: vao.release()
             if prog: prog.release()
 
     def __del__(self):
+        # Cleanup static resources when the renderer is destroyed
         try:
-            # Release static resources on destroy
-            if hasattr(self, 'fbo'): self.fbo.release()
-            if hasattr(self, 'vbo'): self.vbo.release()
-            if hasattr(self, 'ctx'): self.ctx.release()
+            if hasattr(self, 'fbo') and self.fbo: self.fbo.release()
+            if hasattr(self, 'vbo') and self.vbo: self.vbo.release()
+            if hasattr(self, 'ctx') and self.ctx: self.ctx.release()
         except:
             pass
