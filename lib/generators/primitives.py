@@ -1,18 +1,18 @@
+# @title 1. Scenario generation and labeling
 import random
 from .base import random_vec3_values, construct_shader
 
 # =============================================================================
-# STAGE 1: PRIMITIVES - CANONICAL SYNTAX
+# STAGE 1: PRIMITIVES - SDF REASONING FOCUS
 # =============================================================================
-# Refactor Note:
-# We have removed code-level syntactic diversity (inline vs verbose vs alternative).
-# We now enforce a SINGLE "Canonical" way to write every shape.
-# Diversity is maintained solely in the Analysis/Comments to teach reasoning.
+# We use randomized variable names (d, dist, field, val) to ensure the model
+# learns the mathematical relationship of the coordinate space rather than
+# memorizing specific character sequences.
 # =============================================================================
 
 def generate_primitive(index=0):
     """
-    Generates primitive samples with strict GLSL syntax but diverse analysis.
+    Generates primitive samples focusing on signed distance field logic.
     """
     if random.random() < 0.7:
         return generate_single_shape()
@@ -20,205 +20,209 @@ def generate_primitive(index=0):
         return generate_double_shape()
 
 def generate_single_shape():
+    """
+    Creates a single shape with deep SDF reasoning in the comments.
+    """
     shape_type = random.choice(['circle', 'square', 'ring'])
-    
-    # Generate geometric parameters
     params = generate_shape_params(shape_type)
     
-    # Generate diverse analysis (reasoning), but STRICT code
     if shape_type == 'circle':
-        return generate_circle_canonical(params)
+        return generate_circle_sdf(params)
     elif shape_type == 'square':
-        return generate_square_canonical(params)
-    else:  # ring
-        return generate_ring_canonical(params)
+        return generate_square_sdf(params)
+    else:
+        return generate_ring_sdf(params)
 
 def generate_double_shape():
+    """
+    Generates two shapes to demonstrate field blending logic.
+    """
     shape1 = random.choice(['circle', 'square', 'ring'])
     shape2 = random.choice(['circle', 'square', 'ring'])
     
     params1 = generate_shape_params(shape1, size_range=(0.1, 0.25))
     params2 = generate_shape_params(shape2, size_range=(0.1, 0.25))
     
-    # Offset logic to ensure shapes don't perfectly overlap
     offset_x = random.uniform(0.15, 0.3) * random.choice([-1, 1])
     offset_y = random.uniform(0.15, 0.3) * random.choice([-1, 1])
     
     params2['pos_x'] = round(params1['pos_x'] + offset_x, 2)
     params2['pos_y'] = round(params1['pos_y'] + offset_y, 2)
     
-    # Clamp to screen bounds
+    # Keep shapes within the standard UV viewport.
     params2['pos_x'] = round(max(-0.35, min(0.35, params2['pos_x'])), 2)
     params2['pos_y'] = round(max(-0.35, min(0.35, params2['pos_y'])), 2)
     
-    # Get Canonical Code Blocks
-    code1, mask_var1 = get_shape_code_canonical(shape1, params1, suffix='1')
-    code2, mask_var2 = get_shape_code_canonical(shape2, params2, suffix='2')
+    code1, mask1, v1 = get_shape_code_sdf(shape1, params1, suffix='_a')
+    code2, mask2, v2 = get_shape_code_sdf(shape2, params2, suffix='_b')
     
-    # Analysis is still verbose/reasoned
     analysis_lines = [
-        f"// Composition: Two shapes ({shape1} + {shape2})",
-        f"// Shape 1: {shape1.capitalize()} at ({params1['pos_x']}, {params1['pos_y']})",
-        f"// Shape 2: {shape2.capitalize()} at ({params2['pos_x']}, {params2['pos_y']})",
-        f"// Blending: Sequential mix operations using masks",
+        f"// Composition: Blending two distinct signed distance fields.",
+        f"// Field A: {shape1.capitalize()} centered at ({params1['pos_x']}, {params1['pos_y']}).",
+        f"// Field B: {shape2.capitalize()} centered at ({params2['pos_x']}, {params2['pos_y']}).",
+        f"// The final color is a sequential mix based on distance mask thresholds.",
     ]
     
     code_lines = []
     code_lines.extend(code1)
-    code_lines.append(f"    col = mix(col, vec3({params1['r']}, {params1['g']}, {params1['b']}), {mask_var1});")
+    code_lines.append(f"    col = mix(col, vec3({params1['r']}, {params1['g']}, {params1['b']}), {mask1});")
     code_lines.append("")
     code_lines.extend(code2)
-    code_lines.append(f"    col = mix(col, vec3({params2['r']}, {params2['g']}, {params2['b']}), {mask_var2});")
+    code_lines.append(f"    col = mix(col, vec3({params2['r']}, {params2['g']}, {params2['b']}), {mask2});")
     
     return construct_shader(analysis_lines, code_lines)
 
 def generate_shape_params(shape_type, size_range=(0.15, 0.35)):
+    """
+    Calculates geometric and visual parameters for shapes.
+    """
     size = round(random.uniform(*size_range), 2)
     thickness = round(random.uniform(0.02, 0.08), 2) if shape_type == 'ring' else 0.0
     
-    outer_radius = size + thickness
-    margin = 0.05
-    max_offset = 0.5 - outer_radius - margin
-    max_offset = max(0.0, max_offset)
-    
+    max_offset = max(0.0, 0.5 - (size + thickness) - 0.05)
     pos_x = round(random.uniform(-max_offset, max_offset), 2)
     pos_y = round(random.uniform(-max_offset, max_offset), 2)
     blur = round(random.uniform(0.005, 0.04), 3)
     
     r, g, b = random_vec3_values()
-    
     return {
         'size': size, 'thickness': thickness,
         'pos_x': pos_x, 'pos_y': pos_y,
         'blur': blur, 'r': r, 'g': g, 'b': b
     }
 
-# =============================================================================
-# CANONICAL IMPLEMENTATIONS
-# =============================================================================
-
-def get_analysis_comment(shape_type, p):
+def get_sdf_analysis(shape_type, p):
     """
-    Returns a diverse analysis comment to prevent template collapse in the Vision Encoder,
-    even though the code generation is strict/canonical.
+    Provides diverse reasoning to prevent template collapse.
     """
-    templates = []
+    v_name = random.choice(['d', 'dist', 'field', 'sdfValue', 'res'])
+    c_name = random.choice(['center', 'p0', 'origin', 'mid'])
     
     if shape_type == 'circle':
         templates = [
             [
-                f"// Shape: Circle",
-                f"// Center: ({p['pos_x']}, {p['pos_y']}), Radius: {p['size']}",
-                f"// Concept: Euclidean distance field"
+                f"// Geometry: Circular signed distance field.",
+                f"// The distance is calculated from the pixel to the center point ({p['pos_x']}, {p['pos_y']}).",
+                f"// Mathematical boundary is set at radius {p['size']}.",
+                f"// The smoothstep function handles the edge transition using the field value."
             ],
             [
-                f"// Geometry: Circle centered at ({p['pos_x']}, {p['pos_y']})",
-                f"// Edge: Soft transition (blur {p['blur']})",
-                f"// Math: length(uv - center)"
-            ],
-            [
-                f"// Feature: Radial gradient mask",
-                f"// Location: vec2({p['pos_x']}, {p['pos_y']})",
-                f"// Size: {p['size']}"
+                f"// Logic: Euclidean distance field for a sphere primitive.",
+                f"// Formula: length(uv - center) - radius.",
+                f"// This creates a continuous gradient where zero represents the edge.",
+                f"// We use a blur of {p['blur']} for the visual falloff."
             ]
         ]
     elif shape_type == 'square':
         templates = [
             [
-                f"// Shape: Square",
-                f"// Center: ({p['pos_x']}, {p['pos_y']}), Size: {p['size']}",
-                f"// Concept: Chebyshev distance (max of absolute x/y)"
+                f"// Geometry: Square distance field using the Chebyshev metric.",
+                f"// We calculate the maximum absolute offset from the center ({p['pos_x']}, {p['pos_y']}).",
+                f"// This creates a box boundary at distance {p['size']}.",
+                f"// The distance field is normalized by the coordinate space."
             ],
             [
-                f"// Geometry: Box/Square",
-                f"// Dimensions: {p['size']} radius (half-width)",
-                f"// Math: max(abs(p.x), abs(p.y))"
+                f"// Logic: Box SDF based on absolute coordinate offsets.",
+                f"// The field value {v_name} increases linearly from the center point.",
+                f"// Edge transition occurs at the boundary defined by {p['size']}.",
+                f"// This implementation avoids conditional branching for performance."
             ]
         ]
-    elif shape_type == 'ring':
+    else: # ring
         templates = [
             [
-                f"// Shape: Ring (Annulus)",
-                f"// Center: ({p['pos_x']}, {p['pos_y']}), Radius: {p['size']}",
-                f"// Thickness: {p['thickness']}"
-            ],
-            [
-                f"// Geometry: Ring",
-                f"// Math: abs(distance - radius)",
-                f"// Profile: Stroked circle with thickness {p['thickness']}"
+                f"// Geometry: Annulus field derived from a circle SDF.",
+                f"// We take the absolute distance from the radius {p['size']}.",
+                f"// This creates a stroke with thickness {p['thickness']}.",
+                f"// Logic ensures the zero-point of the field is the ring center-line."
             ]
         ]
 
-    return random.choice(templates)
+    return random.choice(templates), v_name, c_name
 
-def generate_circle_canonical(p):
-    inner_edge = round(p['size'] - p['blur'], 3)
-    
-    analysis_lines = get_analysis_comment('circle', p)
+def generate_circle_sdf(p):
+    """
+    Generates a compilable circle using pure SDF logic.
+    """
+    analysis, v, c = get_sdf_analysis('circle', p)
+    inner = round(p['size'] - p['blur'], 3)
     
     code_lines = [
-        f"    // Circle: Canonical Implementation",
-        f"    vec2 center = vec2({p['pos_x']}, {p['pos_y']});",
-        f"    float d = length(uv - center);",
-        f"    float mask = smoothstep({p['size']}, {inner_edge}, d);",
+        f"    // Circle SDF implementation.",
+        f"    vec2 {c} = vec2({p['pos_x']}, {p['pos_y']});",
+        f"    float {v} = length(uv - {c});",
+        f"    float mask = smoothstep({p['size']}, {inner}, {v});",
         f"    col = mix(col, vec3({p['r']}, {p['g']}, {p['b']}), mask);"
     ]
-    return construct_shader(analysis_lines, code_lines)
+    return construct_shader(analysis, code_lines)
 
-def generate_square_canonical(p):
-    inner_edge = round(p['size'] - p['blur'], 3)
+def generate_square_sdf(p):
+    """
+    Generates a compilable square using pure SDF logic.
+    """
+    analysis, v, c = get_sdf_analysis('square', p)
+    inner = round(p['size'] - p['blur'], 3)
     
-    analysis_lines = get_analysis_comment('square', p)
+    # Human-like variation: sometimes calculate center inline, sometimes as a variable.
+    if random.random() > 0.5:
+        coord_logic = f"abs(uv - vec2({p['pos_x']}, {p['pos_y']}))"
+    else:
+        coord_logic = f"abs(uv - {c})"
     
-    code_lines = [
-        f"    // Square: Canonical Implementation",
-        f"    vec2 p = abs(uv - vec2({p['pos_x']}, {p['pos_y']}));",
-        f"    float d = max(p.x, p.y);",
-        f"    float mask = smoothstep({p['size']}, {inner_edge}, d);",
-        f"    col = mix(col, vec3({p['r']}, {p['g']}, {p['b']}), mask);"
-    ]
-    return construct_shader(analysis_lines, code_lines)
-
-def generate_ring_canonical(p):
-    inner_thickness = round(p['thickness'] - p['blur'], 3)
-    
-    analysis_lines = get_analysis_comment('ring', p)
-    
-    code_lines = [
-        f"    // Ring: Canonical Implementation",
-        f"    vec2 center = vec2({p['pos_x']}, {p['pos_y']});",
-        f"    float d = abs(length(uv - center) - {p['size']});",
-        f"    float mask = smoothstep({p['thickness']}, {inner_thickness}, d);",
-        f"    col = mix(col, vec3({p['r']}, {p['g']}, {p['b']}), mask);"
-    ]
-    return construct_shader(analysis_lines, code_lines)
-
-# Used for composition (Double Shape)
-def get_shape_code_canonical(shape_type, p, suffix=''):
-    mask_var = f"mask{suffix}"
     code_lines = []
+    code_lines.append(f"    // Square SDF implementation.")
+    if "abs(uv - {c})" in coord_logic:
+        code_lines.append(f"    vec2 {c} = vec2({p['pos_x']}, {p['pos_y']});")
+    
+    code_lines.extend([
+        f"    vec2 p_loc = {coord_logic};",
+        f"    float {v} = max(p_loc.x, p_loc.y);",
+        f"    float mask = smoothstep({p['size']}, {inner}, {v});",
+        f"    col = mix(col, vec3({p['r']}, {p['g']}, {p['b']}), mask);"
+    ])
+    return construct_shader(analysis, code_lines)
+
+def generate_ring_sdf(p):
+    """
+    Generates a compilable ring using pure SDF logic.
+    """
+    analysis, v, c = get_sdf_analysis('ring', p)
+    inner = round(p['thickness'] - p['blur'], 3)
+    
+    code_lines = [
+        f"    // Ring SDF implementation.",
+        f"    vec2 {c} = vec2({p['pos_x']}, {p['pos_y']});",
+        f"    float {v} = abs(length(uv - {c}) - {p['size']});",
+        f"    float mask = smoothstep({p['thickness']}, {inner}, {v});",
+        f"    col = mix(col, vec3({p['r']}, {p['g']}, {p['b']}), mask);"
+    ]
+    return construct_shader(analysis, code_lines)
+
+def get_shape_code_sdf(shape_type, p, suffix=''):
+    """
+    Returns compilable snippets for composition scenarios.
+    """
+    v = f"d{suffix}"
+    mask = f"mask{suffix}"
+    code = []
     
     if shape_type == 'circle':
-        inner_edge = round(p['size'] - p['blur'], 3)
-        code_lines = [
-            f"    // Circle {suffix}",
-            f"    float d{suffix} = length(uv - vec2({p['pos_x']}, {p['pos_y']}));",
-            f"    float {mask_var} = smoothstep({p['size']}, {inner_edge}, d{suffix});"
+        inner = round(p['size'] - p['blur'], 3)
+        code = [
+            f"    float {v} = length(uv - vec2({p['pos_x']}, {p['pos_y']}));",
+            f"    float {mask} = smoothstep({p['size']}, {inner}, {v});"
         ]
     elif shape_type == 'square':
-        inner_edge = round(p['size'] - p['blur'], 3)
-        code_lines = [
-            f"    // Square {suffix}",
+        inner = round(p['size'] - p['blur'], 3)
+        code = [
             f"    vec2 p{suffix} = abs(uv - vec2({p['pos_x']}, {p['pos_y']}));",
-            f"    float d{suffix} = max(p{suffix}.x, p{suffix}.y);",
-            f"    float {mask_var} = smoothstep({p['size']}, {inner_edge}, d{suffix});"
+            f"    float {v} = max(p{suffix}.x, p{suffix}.y);",
+            f"    float {mask} = smoothstep({p['size']}, {inner}, {v});"
         ]
     elif shape_type == 'ring':
-        inner_thickness = round(p['thickness'] - p['blur'], 3)
-        code_lines = [
-            f"    // Ring {suffix}",
-            f"    float d{suffix} = abs(length(uv - vec2({p['pos_x']}, {p['pos_y']})) - {p['size']});",
-            f"    float {mask_var} = smoothstep({p['thickness']}, {inner_thickness}, d{suffix});"
+        inner = round(p['thickness'] - p['blur'], 3)
+        code = [
+            f"    float {v} = abs(length(uv - vec2({p['pos_x']}, {p['pos_y']})) - {p['size']});",
+            f"    float {mask} = smoothstep({p['thickness']}, {inner}, {v});"
         ]
-        
-    return code_lines, mask_var
+    return code, mask, v
