@@ -1,0 +1,122 @@
+[
+  {
+    "sample_index": 0,
+    "seed": 5000,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: square | Center: 0.0, 0.24 | Size: 0.19]. Mapping field to 'd' using 'p' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 p = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(p - vec2(0.0, 0.24)) - 0.19;\n    float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.5, 0.34, 0.52), vec3(0.0), smoothstep(0.0, 0.01, d));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: square | Center: 0.01, 0.25 | Size: 0.15]. Mapping field to 'd' using 'pos' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 pos = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(pos - vec2(0.01, 0.25)) - 0.15;\n    float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.58, 0.35, 0.68), vec3(0.0), smoothstep(0.0, 0.01, d));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.012017764695619873
+  },
+  {
+    "sample_index": 1,
+    "seed": 5001,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: annulus | Center: 0.2, 0.04 | Size: 0.19]. Mapping field to 'sdfValue' using 'uv' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float sdfValue = abs(length(uv - vec2(0.2, 0.04)) - 0.19) - 0.02;\n    vec3 color = mix(vec3(0.05, 0.71, 0.21), vec3(0.0), smoothstep(0.0, 0.01, sdfValue));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: annulus | Center: 0.19, 0.05 | Size: 0.21]. Mapping field to 'dist' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = abs(length(st - vec2(0.19, 0.05)) - 0.21) - 0.02;\n    vec3 color = mix(vec3(0.21, 0.85, 0.38), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.011987416698705624
+  },
+  {
+    "sample_index": 2,
+    "seed": 5002,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: square | Center: -0.32, 0.18 | Size: 0.26]. Mapping field to 'field' using 'st' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(st - vec2(-0.32, 0.18)) - 0.26;\n    float field = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.72, 0.45, 0.27), vec3(0.0), smoothstep(0.0, 0.01, field));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: square | Center: -0.21, 0.18 | Size: 0.21]. Mapping field to 'field' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(st - vec2(-0.21, 0.18)) - 0.21;\n    float field = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.71, 0.41, 0.31), vec3(0.0), smoothstep(0.0, 0.01, field));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.02610265637702947
+  },
+  {
+    "sample_index": 3,
+    "seed": 5003,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: annulus | Center: 0.02, 0.05 | Size: 0.18]. Mapping field to 'dist' using 'uv' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = abs(length(uv - vec2(0.02, 0.05)) - 0.18) - 0.02;\n    vec3 color = mix(vec3(0.59, 0.44, 0.44), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: annulus | Center: 0.07, 0.05 | Size: 0.21]. Mapping field to 'dist' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = abs(length(st - vec2(0.07, 0.05)) - 0.21) - 0.02;\n    vec3 color = mix(vec3(0.68, 0.45, 0.51), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.019335016536358215
+  },
+  {
+    "sample_index": 4,
+    "seed": 5004,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: square | Center: 0.06, -0.01 | Size: 0.17]. Mapping field to 'dist' using 'p' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 p = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(p - vec2(0.06, -0.01)) - 0.17;\n    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.06, 0.65, 0.18), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: square | Center: 0.07, 0.0 | Size: 0.16]. Mapping field to 'field' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    vec2 q = abs(st - vec2(0.07, 0.0)) - 0.16;\n    float field = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n    vec3 color = mix(vec3(0.21, 0.81, 0.38), vec3(0.0), smoothstep(0.0, 0.01, field));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.004921484368742391
+  },
+  {
+    "sample_index": 5,
+    "seed": 5005,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: circle | Center: -0.01, -0.16 | Size: 0.15]. Mapping field to 'd' using 'st' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float d = length(st - vec2(-0.01, -0.16)) - 0.15;\n    vec3 color = mix(vec3(0.09, 0.07, 0.73), vec3(0.0), smoothstep(0.0, 0.01, d));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: circle | Center: 0.03, -0.1 | Size: 0.17]. Mapping field to 'd' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float d = length(st - vec2(0.03, -0.1)) - 0.17;\n    vec3 color = mix(vec3(0.15, 0.1, 0.9), vec3(0.0), smoothstep(0.0, 0.01, d));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.012505513814173036
+  },
+  {
+    "sample_index": 6,
+    "seed": 5006,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: annulus | Center: -0.25, 0.17 | Size: 0.22]. Mapping field to 'd' using 'st' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float d = abs(length(st - vec2(-0.25, 0.17)) - 0.22) - 0.02;\n    vec3 color = mix(vec3(0.94, 0.18, 0.35), vec3(0.0), smoothstep(0.0, 0.01, d));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: annulus | Center: -0.25, 0.18 | Size: 0.25]. Mapping field to 'dist' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = abs(length(st - vec2(-0.25, 0.18)) - 0.25) - 0.02;\n    vec3 color = mix(vec3(0.93, 0.05, 0.5), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.028323135151093734
+  },
+  {
+    "sample_index": 7,
+    "seed": 5007,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: annulus | Center: 0.28, 0.01 | Size: 0.28]. Mapping field to 'field' using 'pos' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 pos = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float field = abs(length(pos - vec2(0.28, 0.01)) - 0.28) - 0.02;\n    vec3 color = mix(vec3(0.38, 0.52, 0.82), vec3(0.0), smoothstep(0.0, 0.01, field));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: annulus | Center: 0.27, 0.0 | Size: 0.25]. Mapping field to 'dist' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = abs(length(st - vec2(0.27, 0.0)) - 0.25) - 0.02;\n    vec3 color = mix(vec3(0.35, 0.55, 0.98), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.02957762232624872
+  },
+  {
+    "sample_index": 8,
+    "seed": 5008,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Type: circle | Center: -0.18, 0.26 | Size: 0.24]. Mapping field to 'sdfValue' using 'pos' space.",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 pos = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float sdfValue = length(pos - vec2(-0.18, 0.26)) - 0.24;\n    vec3 color = mix(vec3(0.01, 0.4, 0.18), vec3(0.0), smoothstep(0.0, 0.01, sdfValue));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Type: circle | Center: -0.17, 0.28 | Size: 0.25]. Mapping field to 'dist' using 'st' space.\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float dist = length(st - vec2(-0.17, 0.28)) - 0.25;\n    vec3 color = mix(vec3(0.21, 0.58, 0.41), vec3(0.0), smoothstep(0.0, 0.01, dist));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.010247712155481066
+  },
+  {
+    "sample_index": 9,
+    "seed": 5009,
+    "compilation_success": true,
+    "compiler_error": null,
+    "ground_truth": {
+      "analysis": "// Analysis: [Composition: 2 Shapes | A: square | B: annulus]. Blending distinct fields at (0.01, -0.1) and (-0.18, -0.04).",
+      "code": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float d1 = length(max(abs(uv - vec2(0.01, -0.1)) - 0.13, 0.0));\n    vec3 col1 = vec3(0.75, 0.36, 0.09);\n    float d2 = abs(length(uv - vec2(-0.18, -0.04)) - 0.11) - 0.02;\n    vec3 col2 = vec3(0.94, 0.57, 0.43);\n    vec3 color = mix(col1, vec3(0.0), smoothstep(0.0, 0.01, d1));\n    color = mix(col2, color, smoothstep(0.0, 0.01, d2));\n    fragColor = vec4(color, 1.0);\n}"
+    },
+    "prediction_raw": "// Analysis: [Composition: 2 Shapes | A: square | B: annulus]. Blending distinct fields at (-0.05, -0.05) and (-0.21, 0.0).\n\n```glsl\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n    vec2 st = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;\n    float d1 = length(max(abs(st - vec2(-0.05, -0.05)) - 0.15, 0.0));\n    vec3 col1 = vec3(0.71, 0.35, 0.26);\n    float d2 = abs(length(st - vec2(-0.21, 0.0)) - 0.16) - 0.02;\n    vec3 col2 = vec3(0.92, 0.41, 0.41);\n    vec3 color = mix(col1, vec3(0.0), smoothstep(0.0, 0.01, d1));\n    color = mix(col2, color, smoothstep(0.0, 0.01, d2));\n    fragColor = vec4(color, 1.0);\n}\n```",
+    "mse": 0.028739017191780198
+  }
+]
