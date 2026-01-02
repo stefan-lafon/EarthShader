@@ -10,29 +10,27 @@ class ShaderRenderer:
         self.height = height
         self.ctx = None
         
-        # --- FIX: ROBUST CONTEXT CREATION ---
-        # 1. Try EGL first (Essential for Colab/Headless)
+        # --- ROBUST CONTEXT CREATION ---
+        # Try EGL first as it is essential for Colab and headless environments.
         try:
             self.ctx = moderngl.create_context(standalone=True, backend='egl')
-            # print("[ShaderRenderer] Using EGL backend.") # Optional logging
         except Exception as e:
-            # 2. Fallback to standard (sometimes required on local machines)
-            # print(f"[ShaderRenderer] EGL failed ({e}), using default...")
+            # Fallback to standard context for local machine development.
             try:
                 self.ctx = moderngl.create_context(standalone=True)
             except Exception as e2:
                 raise Exception(f"Failed to create ModernGL Context: {e} | {e2}")
         
-        # OPTIMIZATION 1: Static Geometry (Screen Quad)
-        # We create this once and reuse it for every render.
+        # OPTIMIZATION: Static Geometry (Screen Quad).
+        # We create this once and reuse it for every render call.
         vertices = np.array([-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0], dtype='f4')
         self.vbo = self.ctx.buffer(vertices.tobytes())
         
-        # OPTIMIZATION 2: Static Framebuffer
-        # Created once, cleared and reused.
+        # OPTIMIZATION: Static Framebuffer.
+        # Created once, then cleared and reused to save memory.
         self.fbo = self.ctx.simple_framebuffer((self.width, self.height), components=3)
         
-        # Standard Vertex Shader (Pass-through)
+        # Standard Vertex Shader for a pass-through quad.
         self.vert_shader = '''
         #version 330
         in vec2 in_vert;
@@ -43,31 +41,30 @@ class ShaderRenderer:
         }
         '''
         
-        # Load Common GLSL Library
+        # Load the Common GLSL Library from the project root.
         self.common_lib = ""
         try:
-            # Handle both script file execution and Jupyter notebook cases
+            # If gl_renderer.py is in /lib, the project root is one level up.
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Assuming lib/gl_renderer.py structure, common.glsl is in lib/
-            # If your common.glsl is in the root, use os.path.dirname(current_dir)
-            common_path = os.path.join(current_dir, 'common.glsl') 
+            project_root = os.path.dirname(current_dir)
+            common_path = os.path.join(project_root, 'common.glsl') 
             
-            # Fallback for Colab specific path if not found relative
+            # Explicit fallback for Google Colab environments.
             if not os.path.exists(common_path):
-                 common_path = '/content/drive/MyDrive/projects/EarthShader/lib/common.glsl'
+                 common_path = '/content/drive/MyDrive/projects/EarthShader/common.glsl'
 
             if os.path.exists(common_path):
                 with open(common_path, 'r') as f:
                     self.common_lib = f.read()
             else:
-                print(f"Warning: common.glsl not found at {common_path}")
+                print(f"Warning: common.glsl not found at {common_path}.")
                 
         except NameError:
-            # __file__ is not defined in Jupyter, assume absolute path or local dir
+            # Handle cases where __file__ is not defined in Jupyter.
             pass
 
     def render(self, fragment_code, output_path):
-        # Inject common lib and code into the template
+        # Inject the common library and the sample code into the GLSL template.
         full_frag_shader = f'''
         #version 330
         uniform vec2 iResolution;
@@ -88,25 +85,25 @@ class ShaderRenderer:
         vao = None
 
         try:
-            # 1. Create Program (Dynamic per sample)
+            # 1. Create the Program for this specific sample.
             prog = self.ctx.program(
                 vertex_shader=self.vert_shader,
                 fragment_shader=full_frag_shader,
             )
             
-            # Set Uniforms
+            # Set the resolution uniforms for coordinate normalization.
             if 'iResolution' in prog:
                 prog['iResolution'].value = (self.width, self.height)
 
-            # 2. Create VAO (Link static VBO to dynamic Program)
+            # 2. Create the Vertex Array Object.
             vao = self.ctx.simple_vertex_array(prog, self.vbo, 'in_vert')
             
-            # 3. Render
+            # 3. Perform the actual render.
             self.fbo.use()
-            self.fbo.clear(0.0, 0.0, 0.0, 1.0) # Clear to black
+            self.fbo.clear(0.0, 0.0, 0.0, 1.0)
             vao.render(moderngl.TRIANGLE_STRIP)
             
-            # 4. Read & Save
+            # 4. Read the buffer and save the image.
             data = self.fbo.read(components=3)
             image = Image.frombytes('RGB', self.fbo.size, data)
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
@@ -115,17 +112,16 @@ class ShaderRenderer:
             return True
 
         except Exception as e:
-            # Use this print to debug broken shader syntax generated by the model
-            # print(f"Shader Error: {e}") 
+            # Capture shader syntax errors generated by the model.
             return False
             
         finally:
-            # OPTIMIZATION 3: Cleanup only the dynamic resources
+            # Clean up the dynamic resources to prevent GPU memory leaks.
             if vao: vao.release()
             if prog: prog.release()
 
     def __del__(self):
-        # Cleanup static resources when the renderer is destroyed
+        # Clean up the static resources when the renderer is destroyed.
         try:
             if hasattr(self, 'fbo') and self.fbo: self.fbo.release()
             if hasattr(self, 'vbo') and self.vbo: self.vbo.release()
